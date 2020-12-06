@@ -22,10 +22,10 @@ def mainPage() {
             input "contact", "capability.contactSensor", required: true
         }
         section("Automatically lock the door when closed...") {
-            input "minutesLater", "number", title: "Delay (in minutes):", required: true
+            input "secondsLock", "number", title: "Delay (in seconds):", required: true
         }
         section("Automatically unlock the door when open...") {
-            input "secondsLater", "number", title: "Delay (in seconds):", required: true
+            input "secondsUnlock", "number", title: "Delay (in seconds):", required: true
         }
         if (location.contactBookEnabled || phoneNumber) {
             section("Notifications") {
@@ -65,12 +65,12 @@ def lockDoor(){
     if(location.contactBookEnabled) {
         if ( recipients ) {
             log.debug ( "Sending Push Notification..." ) 
-            sendNotificationToContacts( "${lock1} locked after ${contact} was closed for ${minutesLater} minutes!", recipients)
+            sendNotificationToContacts( "${lock1} locked after ${contact} was closed for ${secondsLock} minutes!", recipients)
         }
     }
     if (phoneNumber) {
         log.debug("Sending text message...")
-        sendSms( phoneNumber, "${lock1} locked after ${contact} was closed for ${minutesLater} minutes!")
+        sendSms( phoneNumber, "${lock1} locked after ${contact} was closed for ${secondsLock} minutes!")
     }
 }
 
@@ -80,19 +80,19 @@ def unlockDoor(){
     if(location.contactBookEnabled) {
         if ( recipients ) {
             log.debug ( "Sending Push Notification..." ) 
-            sendNotificationToContacts( "${lock1} unlocked after ${contact} was opened for ${secondsLater} seconds!", recipients)
+            sendNotificationToContacts( "${lock1} unlocked after ${contact} was opened for ${secondsUnlock} seconds!", recipients)
         }
     }
     if ( phoneNumber ) {
         log.debug("Sending text message...")
-        sendSms( phoneNumber, "${lock1} unlocked after ${contact} was opened for ${secondsLater} seconds!")
+        sendSms( phoneNumber, "${lock1} unlocked after ${contact} was opened for ${secondsUnlock} seconds!")
     }
 }
 
 def doorHandler(evt){
     if ((contact.latestValue("contact") == "open") && (evt.value == "locked")) { // If the door is open and a person locks the door then...  
-        //def delay = (secondsLater) // runIn uses seconds
-        runIn( secondsLater, unlockDoor )   // ...schedule (in minutes) to unlock...  We don't want the door to be closed while the lock is engaged. 
+        //def delay = (secondsUnlock) // runIn uses seconds
+        runIn( secondsUnlock, unlockDoor )   // ...schedule (in minutes) to unlock...  We don't want the door to be closed while the lock is engaged. 
     }
     else if ((contact.latestValue("contact") == "open") && (evt.value == "unlocked")) { // If the door is open and a person unlocks it then...
         unschedule( unlockDoor ) // ...we don't need to unlock it later.
@@ -101,15 +101,15 @@ def doorHandler(evt){
         unschedule( lockDoor ) // ...we don't need to lock it later.
     }   
     else if ((contact.latestValue("contact") == "closed") && (evt.value == "unlocked")) { // If the door is closed and a person unlocks it then...
-       //def delay = (minutesLater * 60) // runIn uses seconds
-        runIn( (minutesLater * 60), lockDoor ) // ...schedule (in minutes) to lock.
+       //def delay = (secondsLock) // runIn uses seconds
+        runIn( (secondsLock), lockDoor ) // ...schedule (in minutes) to lock.
     }
     else if ((lock1.latestValue("lock") == "unlocked") && (evt.value == "open")) { // If a person opens an unlocked door...
         unschedule( lockDoor ) // ...we don't need to lock it later.
     }
     else if ((lock1.latestValue("lock") == "unlocked") && (evt.value == "closed")) { // If a person closes an unlocked door...
-        //def delay = (minutesLater * 60) // runIn uses seconds
-        runIn( (minutesLater * 60), lockDoor ) // ...schedule (in minutes) to lock.
+        //def delay = (secondsLock) // runIn uses seconds
+        runIn( (secondsLock), lockDoor ) // ...schedule (in minutes) to lock.
     }
     else { //Opening or Closing door when locked (in case you have a handle lock)
         log.debug "Unlocking the door."
